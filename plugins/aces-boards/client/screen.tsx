@@ -838,6 +838,16 @@ function ContextMenu({
   );
 }
 
+function cardAttention(card: WorkspaceCard): "error" | "permission" | "finished" | undefined {
+  const reasons = card.sessions
+    .map((s) => s.attentionReason)
+    .filter((r): r is "error" | "permission" | "finished" => r === "error" || r === "permission" || r === "finished");
+  if (reasons.includes("error")) return "error";
+  if (reasons.includes("permission")) return "permission";
+  if (reasons.includes("finished")) return "finished";
+  return undefined;
+}
+
 function WorkspaceCardView({
   card,
   theme,
@@ -858,45 +868,67 @@ function WorkspaceCardView({
   const c = theme.colors;
   const ids = new Set(card.sessions.map((s) => s.id));
   const roots = card.sessions.filter((s) => !s.parentAgentId || !ids.has(s.parentAgentId));
+  const attention = cardAttention(card);
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!attention) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.25, duration: 1000, useNativeDriver: false }),
+        Animated.timing(pulse, { toValue: 1, duration: 1000, useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [attention, pulse]);
+  const attentionColor = attention === "error" ? c.statusDanger : attention === "permission" ? c.foreground : c.accent;
   return (
-    <View style={{ backgroundColor: c.surface0, borderRadius: 8, borderWidth: 1, borderColor: c.border, padding: 10, gap: 4 }}>
-      <Pressable accessibilityRole="button" onPress={onToggle}>
-        <Text style={{ color: c.foreground, fontWeight: "600", fontSize: 13 }}>{card.name}</Text>
-        {card.branch ? <Text style={{ color: c.foregroundMuted, fontSize: 11 }}>{card.branch}</Text> : null}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-          {card.pr ? (
-            <View style={{ backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-              <Text style={{ color: c.foreground, fontSize: 11 }}>PR #{card.pr.number}</Text>
-            </View>
-          ) : null}
-          {card.issues.map((issue, i) => (
-            <View key={i} style={{ backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-              <Text style={{ color: c.foreground, fontSize: 11 }}>{issue}</Text>
-            </View>
-          ))}
-        </View>
-        <Text style={{ color: c.foregroundMuted, fontSize: 11, marginTop: 2 }}>
-          {card.sessions.length} session{card.sessions.length === 1 ? "" : "s"}
-        </Text>
-      </Pressable>
-
-      {expanded ? (
-        <View style={{ gap: 2, marginTop: 4 }}>
-          {roots.map((root) => (
-            <SessionTree key={root.id} session={root} sessions={card.sessions} depth={0} theme={theme} onOpen={onOpenAgent} />
-          ))}
-          {card.id !== UNASSIGNED_CARD_ID ? (
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
-              <Pressable accessibilityRole="button" onPress={onMove} style={{ padding: 6, borderRadius: 6, backgroundColor: c.border }}>
-                <Text style={{ color: c.foreground, fontSize: 12 }}>Move</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" onPress={onNewSession} style={{ padding: 6, borderRadius: 6, backgroundColor: c.border }}>
-                <Text style={{ color: c.foreground, fontSize: 12 }}>New session</Text>
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
+    <View>
+      {attention ? (
+        <Animated.View
+          pointerEvents="none"
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 8, borderWidth: 2, borderColor: attentionColor, opacity: pulse }}
+        />
       ) : null}
+      <View style={{ backgroundColor: c.surface0, borderRadius: 8, borderWidth: 1, borderColor: c.border, padding: 10, gap: 4 }}>
+        <Pressable accessibilityRole="button" onPress={onToggle}>
+          <Text style={{ color: c.foreground, fontWeight: "600", fontSize: 13 }}>{card.name}</Text>
+          {card.branch ? <Text style={{ color: c.foregroundMuted, fontSize: 11 }}>{card.branch}</Text> : null}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+            {card.pr ? (
+              <View style={{ backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                <Text style={{ color: c.foreground, fontSize: 11 }}>PR #{card.pr.number}</Text>
+              </View>
+            ) : null}
+            {card.issues.map((issue, i) => (
+              <View key={i} style={{ backgroundColor: c.border, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                <Text style={{ color: c.foreground, fontSize: 11 }}>{issue}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={{ color: c.foregroundMuted, fontSize: 11, marginTop: 2 }}>
+            {card.sessions.length} session{card.sessions.length === 1 ? "" : "s"}
+          </Text>
+        </Pressable>
+
+        {expanded ? (
+          <View style={{ gap: 2, marginTop: 4 }}>
+            {roots.map((root) => (
+              <SessionTree key={root.id} session={root} sessions={card.sessions} depth={0} theme={theme} onOpen={onOpenAgent} />
+            ))}
+            {card.id !== UNASSIGNED_CARD_ID ? (
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
+                <Pressable accessibilityRole="button" onPress={onMove} style={{ padding: 6, borderRadius: 6, backgroundColor: c.border }}>
+                  <Text style={{ color: c.foreground, fontSize: 12 }}>Move</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={onNewSession} style={{ padding: 6, borderRadius: 6, backgroundColor: c.border }}>
+                  <Text style={{ color: c.foreground, fontSize: 12 }}>New session</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }

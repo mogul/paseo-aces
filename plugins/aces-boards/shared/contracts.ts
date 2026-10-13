@@ -56,6 +56,7 @@ export const SessionSchema = z.object({
   provider: z.string(),
   model: z.string().nullable(),
   parentAgentId: z.string().nullable(),
+  attentionReason: z.enum(["permission", "error", "finished"]).optional(),
 });
 export type Session = z.infer<typeof SessionSchema>;
 

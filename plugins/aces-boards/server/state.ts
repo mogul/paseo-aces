@@ -9,6 +9,14 @@ function parentAgentIdOf(labels: Readonly<Record<string, string>> | undefined): 
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
+function attentionReasonOf(agent: { requiresAttention?: boolean; attentionReason?: string | null }): "permission" | "error" | "finished" | undefined {
+  if (!agent.requiresAttention) return undefined;
+  if (agent.attentionReason === "permission" || agent.attentionReason === "error" || agent.attentionReason === "finished") {
+    return agent.attentionReason;
+  }
+  return undefined;
+}
+
 async function collectWorkspaceCards(paseo: PaseoApi): Promise<WorkspaceCard[]> {
   const [workspaceResult, agentResult] = await Promise.all([paseo.workspaces.list(), paseo.agents.list()]);
   const workspaces = workspaceResult.entries.filter((workspace) => !workspace.archivingAt);
@@ -27,6 +35,7 @@ async function collectWorkspaceCards(paseo: PaseoApi): Promise<WorkspaceCard[]> 
         provider: agent.provider,
         model: agent.model,
         parentAgentId: parentAgentIdOf(agent.labels),
+        attentionReason: attentionReasonOf(agent),
       }));
 
     const issues = (workspace.labels ?? []).filter((label) => label.startsWith(ISSUE_LABEL_PREFIX));
@@ -63,6 +72,7 @@ async function collectWorkspaceCards(paseo: PaseoApi): Promise<WorkspaceCard[]> 
         provider: agent.provider,
         model: agent.model,
         parentAgentId: parentAgentIdOf(agent.labels),
+        attentionReason: attentionReasonOf(agent),
       })),
     });
   }
