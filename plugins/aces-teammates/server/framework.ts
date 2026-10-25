@@ -59,6 +59,10 @@ export function frameworkBaseBranch(): string {
 export function addTeammateWorktree(slug: string, baseBranch: string): string {
   const home = join(baseDir(), "teammates", slug);
   run(`git worktree add ${JSON.stringify(home)} -b tm/${slug} ${baseBranch}`, frameworkDir());
+  // Attribute any commits the teammate makes itself to the teammate, not to
+  // "aces" (which is reserved for plugin-generated snapshots).
+  run(`git config --worktree user.name ${JSON.stringify(slug)}`, home);
+  run(`git config --worktree user.email ${JSON.stringify(`${slug}@localhost`)}`, home);
   return home;
 }
 
@@ -184,6 +188,10 @@ export function ensureFrameworkRepo(version: string): Promise<void> {
           const dir = frameworkDir();
           const wasMissing = !existsSync(join(dir, ".git"));
           bootstrapRepo();
+          // Per-worktree git config (used for per-teammate identity) requires
+          // this extension flag. Set it idempotently on every load so it also
+          // applies to framework repos that predate this feature.
+          run("git config extensions.worktreeConfig true", dir);
           if (wasMissing) {
             run(`git config framework.version ${version}`, dir);
           } else if (readFrameworkVersion(dir) !== version) {
