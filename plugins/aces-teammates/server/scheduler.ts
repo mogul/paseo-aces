@@ -122,11 +122,19 @@ export class HeartbeatScheduler {
   }
 
   onTurnEnded(agentId: string, paseo: PaseoApi): void {
-    // Clear presence for any agent (heartbeat- or start-spawned) that finished.
-    this.presence.onTurnEnded(agentId);
-    for (const [teammateId, liveId] of this.live) {
+    // Clear presence for any agent (heartbeat- or start-spawned) that finished,
+    // and snapshot the teammate's home so its git tree stays clean for sync.
+    const teammateId = this.presence.onTurnEnded(agentId);
+    if (teammateId) {
+      try {
+        this.store.commitHome(teammateId, "aces: snapshot after turn");
+      } catch (error) {
+        console.error(`[aces-teammates] failed to commit home for ${teammateId}:`, error);
+      }
+    }
+    for (const [tmId, liveId] of this.live) {
       if (liveId === agentId) {
-        this.live.delete(teammateId);
+        this.live.delete(tmId);
         void paseo.agents.ref(agentId).archive().catch(() => {});
         return;
       }

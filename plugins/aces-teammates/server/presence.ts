@@ -29,9 +29,12 @@ export class PresenceTracker {
     this.persist();
   }
 
-  onTurnEnded(agentId: string): void {
-    if (!this.agentToTeammate.delete(agentId)) return;
+  onTurnEnded(agentId: string): string | undefined {
+    const teammateId = this.agentToTeammate.get(agentId);
+    if (teammateId === undefined) return undefined;
+    this.agentToTeammate.delete(agentId);
     this.persist();
+    return teammateId;
   }
 
   // Writes { "<teammateId>": true } for every currently-active teammate.

@@ -65,6 +65,9 @@ export function addTeammateWorktree(slug: string, baseBranch: string): string {
 export function syncTeammateBranch(slug: string, baseBranch: string): { ok: boolean; conflict: boolean; files: string[]; error?: string } {
   const home = join(baseDir(), "teammates", slug);
   try {
+    // Safety net: snapshot any uncommitted work first so `git rebase` can run
+    // even if the teammate's home is dirty (memory writes, learned-file edits).
+    commitSnapshot(home, "aces: snapshot before framework sync");
     run(`git rebase ${baseBranch}`, home);
     return { ok: true, conflict: false, files: [] };
   } catch (error) {
@@ -89,11 +92,19 @@ function readFrameworkVersion(dir: string): string {
 
 function commitIfChanged(dir: string, message: string): void {
   try {
-    run("git add -A", dir);
-    run(`git commit -m ${JSON.stringify(message)}`, dir);
+    commitSnapshot(dir, message);
   } catch {
-    // nothing to commit — ignore
+    // nothing to commit, or commit failed — ignore (framework template update)
   }
+}
+
+// Commits any uncommitted changes in `dir` as "aces" (the plugin identity), so
+// plugin-generated snapshots are clearly distinguishable from a teammate's own
+// commits. No-op when the working tree is clean.
+export function commitSnapshot(dir: string, message: string): void {
+  if (!run("git status --porcelain", dir).trim()) return;
+  run("git add -A", dir);
+  run(`git -c user.name=aces -c user.email=aces@localhost commit -m ${JSON.stringify(message)}`, dir);
 }
 
 // Rewrites the framework template branches to the current seeds. Persona

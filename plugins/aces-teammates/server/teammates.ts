@@ -6,7 +6,7 @@ import { join } from "node:path";
 import type { PaseoApi } from "@getpaseo/client";
 import type { BoardSummary, Teammate } from "../shared/contracts";
 import { getPersona } from "../shared/personas";
-import { addTeammateWorktree, frameworkBaseBranch, syncTeammateBranch } from "./framework";
+import { addTeammateWorktree, commitSnapshot, frameworkBaseBranch, syncTeammateBranch } from "./framework";
 import { buildTeammateSystemPrompt, DEFAULT_TEAMMATE_PROVIDER } from "./teammate-prompt";
 
 interface TeammateRecord {
@@ -396,6 +396,14 @@ export class TeammateStore {
     const record = this.record(id);
     record.lastAgentId = agentId;
     this.persist();
+  }
+
+  // Snapshots the teammate's home (memory + learned files) as a commit authored
+  // by "aces" (the plugin identity), keeping the git tree clean so framework
+  // sync can rebase. No-op when there is nothing to commit.
+  commitHome(id: string, message: string): void {
+    this.record(id);
+    commitSnapshot(this.memoryPath(id), message);
   }
 
   syncFramework(id: string): { ok: boolean; conflict: boolean; files: string[]; error?: string } {
