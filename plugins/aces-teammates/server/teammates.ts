@@ -398,7 +398,7 @@ export class TeammateStore {
     this.persist();
   }
 
-  syncFramework(id: string): { ok: boolean; conflict: boolean; files: string[] } {
+  syncFramework(id: string): { ok: boolean; conflict: boolean; files: string[]; error?: string } {
     const record = this.record(id);
     const base = record.persona ? `template/${record.persona}` : frameworkBaseBranch();
     const result = syncTeammateBranch(id, base);

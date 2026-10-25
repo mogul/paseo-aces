@@ -184,7 +184,7 @@ export function TeammatesScreen({ theme, layout, navigation }: PluginScreenProps
       [
         { label: "Edit", onPress: () => { setMenu(null); setOverlay({ kind: "edit", teammate }); } },
         { label: "Copy memory path", onPress: () => { setMenu(null); void copyPath(teammate); } },
-        { label: "Sync framework", onPress: () => { setMenu(null); void syncFramework({ id: teammate.id }).then((r) => { if (r.ok) toast.show("Framework synced."); else if (r.conflict) toast.error(`Sync conflict in ${r.files.join(", ") || "files"} — start ${teammate.name} to resolve.`); else toast.error("Sync failed."); invalidate(); }).catch((err) => toast.error(err instanceof Error ? err.message : String(err))); } },
+        { label: "Sync framework", onPress: () => { setMenu(null); void syncFramework({ id: teammate.id }).then((r) => { if (r.ok) toast.show("Framework synced."); else if (r.conflict) toast.error(`Sync conflict in ${r.files.join(", ") || "files"} — start ${teammate.name} to resolve.`); else toast.error(r.error ? `Sync failed: ${r.error.replace(/\s+/g, " ").trim()}` : "Sync failed."); invalidate(); }).catch((err) => toast.error(err instanceof Error ? err.message : String(err))); } },
         { label: "Delete", danger: true, onPress: () => { setMenu(null); setOverlay({ kind: "delete", teammate }); } },
       ],
       event.nativeEvent.pageX,

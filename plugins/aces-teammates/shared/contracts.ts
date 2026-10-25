@@ -93,5 +93,5 @@ export const teammateStartRpc = defineRpc({
 export const teammateSyncFrameworkRpc = defineRpc({
   name: "teammate.sync-framework",
   input: z.object({ id: z.string().min(1) }).strict(),
-  output: z.object({ ok: z.boolean(), conflict: z.boolean(), files: z.array(z.string()) }),
+  output: z.object({ ok: z.boolean(), conflict: z.boolean(), files: z.array(z.string()), error: z.string().optional() }),
 });

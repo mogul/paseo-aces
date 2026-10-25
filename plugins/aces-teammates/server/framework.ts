@@ -17,6 +17,20 @@ function run(cmd: string, dir: string): string {
   return execSync(cmd, { cwd: dir, encoding: "utf8" });
 }
 
+// Pulls a human-readable message out of a thrown execSync error. Prefers git's
+// stderr (the actual failure text) over the generic "Command failed: …" prefix.
+function gitErrorMessage(error: unknown): string {
+  if (error && typeof error === "object") {
+    const stderr = (error as { stderr?: unknown }).stderr;
+    if (typeof stderr === "string") return stderr.trim();
+    if (stderr && typeof stderr === "object" && typeof (stderr as { toString(): string }).toString === "function") {
+      const text = (stderr as { toString(): string }).toString();
+      if (text.trim()) return text.trim();
+    }
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 function writeFile(dir: string, filename: string, content: string): void {
   writeFileSync(join(dir, filename), content, "utf8");
 }
@@ -48,19 +62,20 @@ export function addTeammateWorktree(slug: string, baseBranch: string): string {
   return home;
 }
 
-export function syncTeammateBranch(slug: string, baseBranch: string): { ok: boolean; conflict: boolean; files: string[] } {
+export function syncTeammateBranch(slug: string, baseBranch: string): { ok: boolean; conflict: boolean; files: string[]; error?: string } {
   const home = join(baseDir(), "teammates", slug);
   try {
     run(`git rebase ${baseBranch}`, home);
     return { ok: true, conflict: false, files: [] };
-  } catch {
+  } catch (error) {
+    const message = gitErrorMessage(error);
     try {
       const files = run("git diff --name-only --diff-filter=U", home).trim().split(/\s+/).filter(Boolean);
-      if (files.length > 0) return { ok: false, conflict: true, files };
+      if (files.length > 0) return { ok: false, conflict: true, files, error: message };
     } catch {
       // fall through
     }
-    return { ok: false, conflict: false, files: [] };
+    return { ok: false, conflict: false, files: [], error: message };
   }
 }
 
