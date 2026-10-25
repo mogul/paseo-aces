@@ -11,9 +11,9 @@ import {
   teammateCreateRpc,
   teammateDeleteRpc,
   teammateListRpc,
-  teammateRenameRpc,
   teammateStartRpc,
   teammateSyncFrameworkRpc,
+  teammateUpdateRpc,
   type BoardSummary,
   type Teammate,
 } from "../shared/contracts";
@@ -36,7 +36,7 @@ const HEARTBEAT_PRESETS: { label: string; cron: string }[] = [
 
 type Overlay =
   | { kind: "new" }
-  | { kind: "rename"; teammate: Teammate }
+  | { kind: "edit"; teammate: Teammate }
   | { kind: "delete"; teammate: Teammate };
 
 interface MenuItem {
@@ -60,7 +60,7 @@ export function TeammatesScreen({ theme, layout, navigation }: PluginScreenProps
 
   const list = useRpc(teammateListRpc);
   const create = useRpc(teammateCreateRpc);
-  const rename = useRpc(teammateRenameRpc);
+  const update = useRpc(teammateUpdateRpc);
   const remove = useRpc(teammateDeleteRpc);
   const start = useRpc(teammateStartRpc);
   const boardsRpc = useRpc(teammateBoardsRpc);
@@ -124,9 +124,9 @@ export function TeammatesScreen({ theme, layout, navigation }: PluginScreenProps
     setOverlay(null);
   }
 
-  async function handleRename(teammate: Teammate, name: string, boardId?: string, boardName?: string, heartbeatCron?: string, emoji?: string) {
+  async function handleUpdate(teammate: Teammate, input: { name: string; description?: string; provider?: string; thinkingOptionId?: string; boardId?: string; boardName?: string; heartbeatCron?: string; emoji?: string }) {
     try {
-      await rename({ id: teammate.id, name, boardId, boardName, heartbeatCron, emoji });
+      await update({ id: teammate.id, ...input });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
       return;
@@ -182,7 +182,7 @@ export function TeammatesScreen({ theme, layout, navigation }: PluginScreenProps
   function openMenu(event: { nativeEvent: { pageX: number; pageY: number } }, teammate: Teammate) {
     placeMenu(
       [
-        { label: "Rename", onPress: () => { setMenu(null); setOverlay({ kind: "rename", teammate }); } },
+        { label: "Edit", onPress: () => { setMenu(null); setOverlay({ kind: "edit", teammate }); } },
         { label: "Copy memory path", onPress: () => { setMenu(null); void copyPath(teammate); } },
         { label: "Sync framework", onPress: () => { setMenu(null); void syncFramework({ id: teammate.id }).then((r) => { if (r.ok) toast.show("Framework synced."); else if (r.conflict) toast.error(`Sync conflict in ${r.files.join(", ") || "files"} — start ${teammate.name} to resolve.`); else toast.error("Sync failed."); invalidate(); }).catch((err) => toast.error(err instanceof Error ? err.message : String(err))); } },
         { label: "Delete", danger: true, onPress: () => { setMenu(null); setOverlay({ kind: "delete", teammate }); } },
@@ -237,7 +237,7 @@ export function TeammatesScreen({ theme, layout, navigation }: PluginScreenProps
           boards={boards}
           onClose={() => setOverlay(null)}
           onCreate={handleCreate}
-          onRename={handleRename}
+          onUpdate={handleUpdate}
           onDelete={handleDelete}
         />
       ) : null}
@@ -270,7 +270,7 @@ function OverlayView({
   boards,
   onClose,
   onCreate,
-  onRename,
+  onUpdate,
   onDelete,
 }: {
   overlay: Overlay;
@@ -278,14 +278,14 @@ function OverlayView({
   boards: BoardSummary[];
   onClose: () => void;
   onCreate: (input: { name: string; description?: string; provider?: string; thinkingOptionId?: string; boardId?: string; boardName?: string; heartbeatCron?: string; persona?: string; emoji?: string }) => void;
-  onRename: (teammate: Teammate, name: string, boardId?: string, boardName?: string, heartbeatCron?: string, emoji?: string) => void;
+  onUpdate: (teammate: Teammate, input: { name: string; description?: string; provider?: string; thinkingOptionId?: string; boardId?: string; boardName?: string; heartbeatCron?: string; emoji?: string }) => void;
   onDelete: (teammate: Teammate) => void;
 }) {
   switch (overlay.kind) {
     case "new":
       return <NewTeammateModal theme={theme} boards={boards} onClose={onClose} onCreate={onCreate} />;
-    case "rename":
-      return <RenameModal theme={theme} teammate={overlay.teammate} boards={boards} onClose={onClose} onRename={onRename} />;
+    case "edit":
+      return <EditModal theme={theme} teammate={overlay.teammate} boards={boards} onClose={onClose} onUpdate={onUpdate} />;
     case "delete":
       return <DeleteModal theme={theme} teammate={overlay.teammate} onClose={onClose} onDelete={onDelete} />;
   }
@@ -525,21 +525,37 @@ function NewTeammateModal({ theme, boards, onClose, onCreate }: { theme: PluginT
   );
 }
 
-function RenameModal({ theme, teammate, boards, onClose, onRename }: { theme: PluginTheme; teammate: Teammate; boards: BoardSummary[]; onClose: () => void; onRename: (teammate: Teammate, name: string, boardId?: string, boardName?: string, heartbeatCron?: string, emoji?: string) => void }) {
+function EditModal({ theme, teammate, boards, onClose, onUpdate }: { theme: PluginTheme; teammate: Teammate; boards: BoardSummary[]; onClose: () => void; onUpdate: (teammate: Teammate, input: { name: string; description?: string; provider?: string; thinkingOptionId?: string; boardId?: string; boardName?: string; heartbeatCron?: string; emoji?: string }) => void }) {
   const c = theme.colors;
   const [name, setName] = useState(teammate.name);
+  const [description, setDescription] = useState(teammate.description ?? "");
+  const [provider, setProvider] = useState(teammate.provider ?? "");
+  const [thinkingOptionId, setThinkingOptionId] = useState(teammate.thinkingOptionId ?? "");
   const [boardId, setBoardId] = useState<string | undefined>(teammate.boardId);
   const [heartbeatCron, setHeartbeatCron] = useState(teammate.heartbeatCron ?? "");
   const [emoji, setEmoji] = useState<string | undefined>(teammate.emoji);
 
   return (
-    <Modal title="Rename teammate" open onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Modal title="Edit teammate" open onOpenChange={(o) => { if (!o) onClose(); }}>
       <Modal.Content contentContainerStyle={{ gap: 12 }}>
         <Text style={labelStyle(c)}>Name</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <EmojiButton theme={theme} value={emoji} onChange={setEmoji} />
           <HostTextInput value={name} onChangeText={setName} style={[inputStyle(c), { flex: 1 }]} autoFocus />
         </View>
+        <Text style={labelStyle(c)}>Description</Text>
+        <HostTextInput value={description} onChangeText={setDescription} style={inputStyle(c)} />
+        <Text style={labelStyle(c)}>Provider</Text>
+        <ProviderCombobox
+          theme={theme}
+          provider={provider}
+          thinkingOptionId={thinkingOptionId}
+          queryKeyPrefix="aces-teammates"
+          onChange={(next) => {
+            setProvider(next.provider);
+            setThinkingOptionId(next.thinkingOptionId ?? "");
+          }}
+        />
         <BoardPicker theme={theme} boards={boards} value={boardId} onChange={setBoardId} />
         <HeartbeatPicker theme={theme} value={heartbeatCron} onChange={setHeartbeatCron} />
         <View style={{ flexDirection: "row", gap: 8, justifyContent: "flex-end" }}>
@@ -549,7 +565,7 @@ function RenameModal({ theme, teammate, boards, onClose, onRename }: { theme: Pl
           <Pressable
             accessibilityRole="button"
             disabled={!name.trim()}
-            onPress={() => onRename(teammate, name.trim(), boardId, boards.find((b) => b.id === boardId)?.name, heartbeatCron.trim() || undefined, emoji?.trim())}
+            onPress={() => onUpdate(teammate, { name: name.trim(), description: description.trim() || undefined, provider: provider.trim() || undefined, thinkingOptionId: thinkingOptionId.trim() || undefined, boardId, boardName: boards.find((b) => b.id === boardId)?.name, heartbeatCron: heartbeatCron.trim() || undefined, emoji: emoji?.trim() })}
             style={{ padding: 8, borderRadius: 8, backgroundColor: c.accent, opacity: name.trim() ? 1 : 0.4 }}
           >
             <Text style={{ color: c.accentForeground, fontWeight: "600" }}>Save</Text>

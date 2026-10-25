@@ -32,7 +32,7 @@ export const DEFAULT_PROVIDER = DEFAULT_TEAMMATE_PROVIDER;
 // The current framework/template version. Stamped on every teammate at creation;
 // bumped when the plugin's seeded template files change meaning. See
 // migrateFramework() for how upgrades are applied.
-export const FRAMEWORK_VERSION = "4";
+export const FRAMEWORK_VERSION = "5";
 
 interface TeammatesData {
   teammates: TeammateRecord[];
@@ -42,7 +42,7 @@ export const SOUL_SEED = "# Soul\n\n(personality, communication style, principle
 export const USER_SEED = "# About the user\n\n(preferences, patterns — the teammate fills this in as it learns)";
 export const BOARD_SEED = "# Board\n\nDescribe what each zone on this board means and how work moves between zones.";
 export const HEARTBEAT_SEED =
-  "# Heartbeat\n\nOptional periodic tasks: review board state, triage new work, summarize to memory.";
+  "# Heartbeat\n\nOptional periodic tasks: review board state and triage new work. If nothing changed and nothing needs attention, finish silently — do not append memory and do not emit a summary. Only act when something changed, failed, or needs attention, and record the outcome to memory with teammate_memory_append.";
 
 export const AGENTS_SEED = `# Agents
 
@@ -378,13 +378,15 @@ export class TeammateStore {
     return this.toTeammate(record);
   }
 
-  rename(id: string, name: string, boardId?: string, boardName?: string, heartbeatCron?: string, persona?: string, emoji?: string): Teammate {
+  update(id: string, name: string, description?: string, provider?: string, thinkingOptionId?: string, boardId?: string, boardName?: string, heartbeatCron?: string, emoji?: string): Teammate {
     const record = this.record(id);
     record.name = name;
+    record.description = description?.trim() || undefined;
+    record.provider = provider?.trim() || undefined;
+    record.thinkingOptionId = thinkingOptionId?.trim() || undefined;
     record.boardId = boardId?.trim() || undefined;
     record.boardName = boardName?.trim() || undefined;
     record.heartbeatCron = heartbeatCron?.trim() || undefined;
-    if (persona !== undefined) record.persona = persona.trim() || undefined;
     record.emoji = emoji?.trim() || undefined;
     this.persist();
     return this.toTeammate(record);

@@ -5,9 +5,9 @@ import {
   teammateCreateRpc,
   teammateDeleteRpc,
   teammateListRpc,
-  teammateRenameRpc,
   teammateStartRpc,
   teammateSyncFrameworkRpc,
+  teammateUpdateRpc,
 } from "./shared/contracts";
 import { ensureFrameworkRepo } from "./server/framework";
 import { McpServer } from "./server/mcp";
@@ -91,9 +91,9 @@ export default function contribute(server: PluginServerContext) {
     return { teammate: store.get(teammate.id), agentId: agent.id };
   });
 
-  server.handle(teammateRenameRpc, ({ id, name, boardId, boardName, heartbeatCron, persona, emoji }, { paseo }) => {
+  server.handle(teammateUpdateRpc, ({ id, name, description, provider, thinkingOptionId, boardId, boardName, heartbeatCron, emoji }, { paseo }) => {
     capturePaseo(paseo);
-    return { teammate: store.rename(id, name, boardId, boardName, heartbeatCron, persona, emoji) };
+    return { teammate: store.update(id, name, description, provider, thinkingOptionId, boardId, boardName, heartbeatCron, emoji) };
   });
 
   server.handle(teammateDeleteRpc, ({ id }, { paseo }) => {

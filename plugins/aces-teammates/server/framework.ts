@@ -90,6 +90,8 @@ function updateTemplate(dir: string, version: string): void {
   run(`git checkout ${base}`, dir);
   writeFile(dir, "AGENTS.md", AGENTS_SEED);
   writeFile(dir, "BOOT.md", BOOT_SEED);
+  writeFile(dir, "BOARD.md", BOARD_SEED);
+  writeFile(dir, "HEARTBEAT.md", HEARTBEAT_SEED);
   writeFile(dir, "SOUL.md", SOUL_SEED);
   writeFile(dir, "USER.md", USER_SEED);
   writeFile(dir, "IDENTITY.md", identitySeed("(name)"));
@@ -101,6 +103,8 @@ function updateTemplate(dir: string, version: string): void {
     run(`git checkout ${branch}`, dir);
     writeFile(dir, "AGENTS.md", AGENTS_SEED);
     writeFile(dir, "BOOT.md", BOOT_SEED);
+    writeFile(dir, "BOARD.md", BOARD_SEED);
+    writeFile(dir, "HEARTBEAT.md", HEARTBEAT_SEED);
     commitIfChanged(dir, `template/${persona.id}: framework update`);
     run(`git checkout ${base}`, dir);
   }

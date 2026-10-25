@@ -22,6 +22,10 @@ const TOOLS = [
     description: "List the teammates.",
     inputSchema: { type: "object", properties: {} },
   },
+  // IMPORTANT: Do not add teammate create/update/delete tools here. Editing a
+  // teammate is a human-only operation exposed via plugin RPC (see
+  // shared/contracts.ts). Exposing an edit tool here would let a teammate modify
+  // itself or other teammates.
   {
     name: "teammate_memory_append",
     description: "Append a note to a teammate's memory.",

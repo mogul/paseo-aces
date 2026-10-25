@@ -48,16 +48,24 @@ export const teammateCreateRpc = defineRpc({
   output: z.object({ teammate: TeammateSchema, agentId: z.string().optional() }),
 });
 
-export const teammateRenameRpc = defineRpc({
-  name: "teammate.rename",
+// Editing a teammate (update/delete) is a HUMAN-ONLY operation. It is exposed
+// exclusively as a plugin RPC — reachable from the Teammates view in the Paseo
+// app — and must NEVER be added to the teammates MCP server (server/mcp.ts).
+// Agents can only reach `teammate_list`, `teammate_memory_append`, and
+// `teammate_memory_read`, which is what prevents a teammate from editing itself
+// or another teammate.
+export const teammateUpdateRpc = defineRpc({
+  name: "teammate.update",
   input: z
     .object({
       id: z.string().min(1),
       name: z.string().min(1),
+      description: z.string().optional(),
+      provider: z.string().optional(),
+      thinkingOptionId: z.string().optional(),
       boardId: z.string().optional(),
       boardName: z.string().optional(),
       heartbeatCron: z.string().optional(),
-      persona: z.string().optional(),
       emoji: z.string().optional(),
     })
     .strict(),

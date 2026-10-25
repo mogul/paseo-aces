@@ -1,7 +1,7 @@
 {
   "id": "aces-teammates",
   "name": "Teammates",
-  "description": "Persistent AI teammates with file-based memory that outlives workspaces: create, rename, and start teammates that remember what they learn across sessions.",
+  "description": "Persistent AI teammates with file-based memory that outlives workspaces: create, edit, and start teammates that remember what they learn across sessions.",
   "media": [],
   "requirements": {
     "paseo": ">=0.11.2"

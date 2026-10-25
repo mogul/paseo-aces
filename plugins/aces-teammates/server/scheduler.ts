@@ -81,11 +81,16 @@ export function matchesCron(expression: string, date: Date): boolean {
 }
 
 export function buildHeartbeatPrompt(teammate: Teammate): string {
+  // The prompt only supplies dynamic context (which board this teammate is
+  // resident on) and points at HEARTBEAT.md. Behavioral rules — including
+  // "finish silently when nothing changed" — live in HEARTBEAT.md (seeded from
+  // HEARTBEAT_SEED), which the teammate reads and owns. Keeping behavior out of
+  // the prompt avoids two sources of truth drifting apart.
   const parts = ["It's time for your heartbeat. Read HEARTBEAT.md and carry out your periodic tasks."];
   if (teammate.boardId) {
     parts.push(
       `You are the resident teammate for board "${teammate.boardName ?? teammate.boardId}" (${teammate.boardId}). ` +
-        `Use your board tools (board_list, board_move_card) to review the board and act, then summarize to memory with teammate_memory_append.`,
+        `Use your board tools (board_list, board_move_card) to review the board and act.`,
     );
   }
   return parts.join(" ");
