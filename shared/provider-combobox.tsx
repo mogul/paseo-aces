@@ -1,6 +1,6 @@
 import type { PluginTheme } from "@getpaseo/plugin";
 import { usePaseo } from "@getpaseo/plugin/client";
-import { ScrollView as HostScrollView, TextInput as HostTextInput } from "@getpaseo/plugin/client/react-native";
+import { ScrollView as HostScrollView, TextInput as HostTextInput } from "@getpaseo/plugin/client/ui";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
