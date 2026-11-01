@@ -10,7 +10,8 @@ import {
   teammateUpdateRpc,
 } from "./shared/contracts";
 import { ensureFrameworkRepo } from "./server/framework";
-import { McpServer } from "./server/mcp";
+import { createTeammateTools } from "./server/agent-tools";
+import { addHook } from "./server/hooks";
 import { PresenceTracker } from "./server/presence";
 import { HeartbeatScheduler, buildHeartbeatPrompt } from "./server/scheduler";
 import { buildSystemPrompt, createBoard, FRAMEWORK_VERSION, readBoards, TeammateStore } from "./server/teammates";
@@ -20,15 +21,8 @@ export default function contribute(server: PluginServerContext) {
   const store = new TeammateStore();
   void ensureFrameworkRepo(FRAMEWORK_VERSION);
   const presence = new PresenceTracker();
+  const teammateTools = createTeammateTools(store);
   let paseoApi: PaseoApi | null = null;
-
-  const mcpServer = new McpServer();
-  mcpServer.attachHandlers({
-    listTeammates: () => store.list().map((t) => ({ id: t.id, name: t.name })),
-    appendMemory: (teammate, text) => store.appendMemory(teammate, text),
-    readMemory: (teammate, days) => store.readMemory(teammate, days),
-  });
-  mcpServer.start();
 
   const capturePaseo = (paseo: PaseoApi) => {
     paseoApi = paseo;
@@ -37,18 +31,19 @@ export default function contribute(server: PluginServerContext) {
   const scheduler = new HeartbeatScheduler(store, () => paseoApi, presence);
   scheduler.start();
 
-  server.before("agent.create", ({ request }, { paseo }) => {
-    capturePaseo(paseo);
-    return {
-      ...request,
-      config: {
-        ...request.config,
-        mcpServers: {
-          ...request.config.mcpServers,
-          "aces-teammates": { type: "http", url: mcpServer.url(), alwaysLoad: true },
-        },
-      },
-    };
+  addHook(server, "agent.create.before", async (_payload, context) => {
+    capturePaseo(context.paseo);
+  });
+
+  // Teammate tools are attached only to teammate sessions, determined by the
+  // label the plugin stamps on the agents it spawns. Attaching them per launch
+  // keeps them out of the agent's saved config, so they never go stale when the
+  // plugin is disabled or reloaded.
+  addHook(server, "agent.open.before", async (payload, context) => {
+    capturePaseo(context.paseo);
+    const teammateId = payload.request.labels[TEAMMATE_ID_LABEL];
+    if (typeof teammateId !== "string" || teammateId.length === 0) return;
+    return { ...payload.request, tools: [...payload.request.tools, ...teammateTools] };
   });
 
   server.handle(teammateListRpc, (_input, { paseo }) => {
@@ -124,21 +119,24 @@ export default function contribute(server: PluginServerContext) {
     return { agentId };
   });
 
-  server.on("agent.created", async (event, { paseo }) => {
-    capturePaseo(paseo);
+  addHook(server, "agent.create.after", async (payload, context) => {
+    capturePaseo(context.paseo);
     try {
-      const refetched = await paseo.agents.ref(event.agent.id).refresh();
+      const refetched = await context.paseo.agents.ref(payload.agent.id).refresh();
       const teammateId = refetched?.agent.labels?.[TEAMMATE_ID_LABEL];
-      if (typeof teammateId === "string") presence.markActive(teammateId, event.agent.id);
+      if (typeof teammateId === "string") presence.markActive(teammateId, payload.agent.id);
     } catch {
       // ignore — presence is best-effort
     }
   });
-  server.on("agent.turn_started", (_event, { paseo }) => capturePaseo(paseo));
-  server.on("agent.turn_ended", (event, { paseo }) => void scheduler.onTurnEnded(event.agent.id, paseo));
+  addHook(server, "agent.turn.before", async (_payload, context) => {
+    capturePaseo(context.paseo);
+  });
+  addHook(server, "agent.turn.after", async (payload, context) => {
+    await scheduler.onTurnEnded(payload.agent.id, context.paseo, payload.outcome);
+  });
 
   return () => {
     scheduler.stop();
-    mcpServer.stop();
   };
 }

@@ -24,102 +24,31 @@ import {
 } from "./shared/contracts";
 import { BoardStore } from "./server/board";
 import { BoardEngine } from "./server/engine";
+import { createBoardTools } from "./server/agent-tools";
+import { addHook } from "./server/hooks";
 import { buildAllWorkspaceCards, buildWorkspaceCards } from "./server/state";
 import { DEFAULT_TEAMMATE_PROVIDER, TEAMMATE_HEARTBEAT_LABEL, TEAMMATE_ID_LABEL, buildTeammateSystemPrompt } from "./server/teammate-prompt";
 import { readBoardTeammates, readTeammateStart, setTeammateWorkspaceId } from "./server/teammates";
-import { McpServer } from "./server/mcp";
 
 export default function contribute(server: PluginServerContext) {
   const store = new BoardStore();
   const engine = new BoardEngine(store);
-  let paseoApi: PaseoApi | null = null;
-
-  const mcpServer = new McpServer();
-  mcpServer.attachHandlers({
-    getCurrentBoard: () => store.current(),
-    listBoards: () => store.list().map((b) => ({ id: b.id, name: b.name })),
-    moveCard: async (workspaceId, zoneId, boardId) => {
-      try {
-        await engine.move(boardId ?? store.current().id, workspaceId, zoneId);
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) };
-      }
-    },
-    createCard: async (input) => {
-      if (!paseoApi) return { ok: false, error: "Paseo API is not available yet." };
-      try {
-        const boardId = input.boardId ?? store.current().id;
-        const workspaceId = await engine.createCard({ boardId, zoneId: input.zoneId, name: input.name, projectCwd: input.projectCwd, isolation: "worktree", prompt: input.prompt });
-        return { ok: true, workspaceId };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) };
-      }
-    },
-    addZone: (groupId, title, boardId) => {
-      try {
-        engine.addZone(boardId ?? store.current().id, groupId, title);
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) };
-      }
-    },
-    renameZone: (zoneId, title, boardId) => {
-      try {
-        engine.updateZone(boardId ?? store.current().id, zoneId, { title });
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) };
-      }
-    },
-    deleteZone: (zoneId, boardId) => {
-      try {
-        engine.deleteZone(boardId ?? store.current().id, zoneId);
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) };
-      }
-    },
-    moveZone: (zoneId, groupId, index, boardId) => {
-      try {
-        engine.moveZone(boardId ?? store.current().id, zoneId, groupId, index);
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) };
-      }
-    },
-    moveGroup: (groupId, index, boardId) => {
-      try {
-        engine.moveGroup(boardId ?? store.current().id, groupId, index);
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) };
-      }
-    },
-    buildWorkspaces: async () => {
-      if (!paseoApi) throw new Error("Paseo API is not available yet.");
-      return buildWorkspaceCards(paseoApi, store.current());
-    },
-  });
-  mcpServer.start();
+  const boardTools = createBoardTools(store, engine);
 
   const capturePaseo = (paseo: PaseoApi) => {
-    paseoApi = paseo;
     engine.attachPaseo(paseo);
   };
 
-  server.before("agent.create", ({ request }, { paseo }) => {
-    capturePaseo(paseo);
-    return {
-      ...request,
-      config: {
-        ...request.config,
-        mcpServers: {
-          ...request.config.mcpServers,
-          "aces-boards": { type: "http", url: mcpServer.url(), alwaysLoad: true },
-        },
-      },
-    };
+  addHook(server, "agent.create.before", async (_payload, context) => {
+    capturePaseo(context.paseo);
+  });
+
+  // Board tools are available to every agent. Attaching them per launch keeps
+  // them out of the agent's saved config, so they never go stale when the
+  // plugin is disabled or reloaded.
+  addHook(server, "agent.open.before", async (payload, context) => {
+    capturePaseo(context.paseo);
+    return { ...payload.request, tools: [...payload.request.tools, ...boardTools] };
   });
 
   server.handle(boardStateRpc, async ({ boardId }, { paseo }) => {
@@ -146,7 +75,7 @@ export default function contribute(server: PluginServerContext) {
     if (!teammate) throw new Error(`Teammate not found: ${teammateId}`);
     let workspaceId = teammate.workspaceId;
     if (!workspaceId) {
-      const workspace = await paseo.workspaces.create({ source: { kind: "directory", path: teammate.homeDir }, title: teammate.name });
+      const workspace = await paseo.workspaces.create({ source: { kind: "directory", path: teammate.homeDir }, title: teammate.name, background: true });
       workspaceId = workspace.id;
       setTeammateWorkspaceId(teammate.id, workspaceId);
     }
@@ -255,11 +184,15 @@ export default function contribute(server: PluginServerContext) {
     return { workspaceId: await engine.createCard(input) };
   });
 
-  server.on("agent.created", (_event, { paseo }) => capturePaseo(paseo));
-  server.on("agent.turn_started", (_event, { paseo }) => capturePaseo(paseo));
-  server.on("workspace.created", (_event, { paseo }) => capturePaseo(paseo));
+  addHook(server, "agent.create.after", async (_payload, context) => {
+    capturePaseo(context.paseo);
+  });
+  addHook(server, "agent.turn.before", async (_payload, context) => {
+    capturePaseo(context.paseo);
+  });
+  addHook(server, "workspace.create.after", async (_payload, context) => {
+    capturePaseo(context.paseo);
+  });
 
-  return () => {
-    mcpServer.stop();
-  };
+  return () => {};
 }

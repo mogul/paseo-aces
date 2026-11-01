@@ -432,7 +432,7 @@ export class TeammateStore {
   async ensureWorkspace(id: string, paseo: PaseoApi): Promise<string> {
     const record = this.record(id);
     if (record.workspaceId) return record.workspaceId;
-    const workspace = await paseo.workspaces.create({ source: { kind: "directory", path: this.memoryPath(id) }, title: record.name });
+    const workspace = await paseo.workspaces.create({ source: { kind: "directory", path: this.memoryPath(id) }, title: record.name, background: true });
     record.workspaceId = workspace.id;
     this.persist();
     return workspace.id;

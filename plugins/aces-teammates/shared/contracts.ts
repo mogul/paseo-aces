@@ -50,7 +50,7 @@ export const teammateCreateRpc = defineRpc({
 
 // Editing a teammate (update/delete) is a HUMAN-ONLY operation. It is exposed
 // exclusively as a plugin RPC — reachable from the Teammates view in the Paseo
-// app — and must NEVER be added to the teammates MCP server (server/mcp.ts).
+// app — and must NEVER be added to the teammate agent tools (server/agent-tools.ts).
 // Agents can only reach `teammate_list`, `teammate_memory_append`, and
 // `teammate_memory_read`, which is what prevents a teammate from editing itself
 // or another teammate.

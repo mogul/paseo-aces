@@ -1,4 +1,5 @@
 import type { PaseoApi } from "@getpaseo/client";
+import type { PluginTurnOutcome } from "@getpaseo/plugin/server";
 import type { Teammate } from "../shared/contracts";
 import { PresenceTracker } from "./presence";
 import { buildSystemPrompt, type TeammateStore } from "./teammates";
@@ -121,7 +122,7 @@ export class HeartbeatScheduler {
     }
   }
 
-  onTurnEnded(agentId: string, paseo: PaseoApi): void {
+  onTurnEnded(agentId: string, paseo: PaseoApi, outcome: PluginTurnOutcome): void {
     // Clear presence for any agent (heartbeat- or start-spawned) that finished,
     // and snapshot the teammate's home so its git tree stays clean for sync.
     const teammateId = this.presence.onTurnEnded(agentId);
@@ -135,7 +136,11 @@ export class HeartbeatScheduler {
     for (const [tmId, liveId] of this.live) {
       if (liveId === agentId) {
         this.live.delete(tmId);
-        void paseo.agents.ref(agentId).archive().catch(() => {});
+        // A failed heartbeat stays unarchived so it remains visible and the next
+        // scheduled tick can retry. Completed and canceled heartbeats are archived.
+        if (outcome.kind !== "failed") {
+          void paseo.agents.ref(agentId).archive().catch(() => {});
+        }
         return;
       }
     }
