@@ -3,6 +3,7 @@ import type { PaseoApi } from "@getpaseo/client";
 import {
   boardAddZoneRpc,
   boardAdoptCardRpc,
+  boardCleanStaleConfigRpc,
   boardCreateCardRpc,
   boardCreateRpc,
   boardDeleteRpc,
@@ -15,6 +16,7 @@ import {
   boardRenameRpc,
   boardSetDefaultsRpc,
   boardSetLastVisitedRpc,
+  boardStaleConfigRpc,
   boardStartTeammateRpc,
   boardStateRpc,
   boardTeammateSessionsRpc,
@@ -26,6 +28,7 @@ import { BoardStore } from "./server/board";
 import { BoardEngine } from "./server/engine";
 import { createBoardTools } from "./server/agent-tools";
 import { addHook } from "./server/hooks";
+import { cleanStaleAcesMcp, scanStaleAcesMcp } from "./server/stale-mcp";
 import { buildAllWorkspaceCards, buildWorkspaceCards } from "./server/state";
 import { DEFAULT_TEAMMATE_PROVIDER, TEAMMATE_HEARTBEAT_LABEL, TEAMMATE_ID_LABEL, buildTeammateSystemPrompt } from "./server/teammate-prompt";
 import { readBoardTeammates, readTeammateStart, setTeammateWorkspaceId } from "./server/teammates";
@@ -38,6 +41,15 @@ export default function contribute(server: PluginServerContext) {
   const capturePaseo = (paseo: PaseoApi) => {
     engine.attachPaseo(paseo);
   };
+
+  let staleCount = scanStaleAcesMcp().count;
+
+  server.handle(boardStaleConfigRpc, () => ({ count: staleCount }));
+  server.handle(boardCleanStaleConfigRpc, () => {
+    const { cleaned } = cleanStaleAcesMcp();
+    staleCount = scanStaleAcesMcp().count;
+    return { cleaned };
+  });
 
   addHook(server, "agent.create.before", async (_payload, context) => {
     capturePaseo(context.paseo);

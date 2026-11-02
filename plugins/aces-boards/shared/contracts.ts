@@ -250,4 +250,19 @@ export const boardTeammateSessionsRpc = defineRpc({
   output: z.object({ sessions: z.array(z.object({ id: z.string(), title: z.string() })) }),
 });
 
+// Detect and clean stale `aces-*` MCP-server references left behind by the
+// pre-0.14 plugins (see server/stale-mcp.ts). Surfaces a one-time offer in the
+// board UI for users upgrading from the old HTTP-MCP-server version.
+export const boardStaleConfigRpc = defineRpc({
+  name: "board.stale-config",
+  input: z.object({}).strict(),
+  output: z.object({ count: z.number().int().min(0) }),
+});
+
+export const boardCleanStaleConfigRpc = defineRpc({
+  name: "board.clean-stale-config",
+  input: z.object({}).strict(),
+  output: z.object({ cleaned: z.number().int().min(0) }),
+});
+
 export const UNASSIGNED_CARD_ID = "__unassigned__";

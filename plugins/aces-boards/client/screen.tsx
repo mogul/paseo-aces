@@ -10,6 +10,7 @@ import {
   UNASSIGNED_CARD_ID,
   boardAddZoneRpc,
   boardAdoptCardRpc,
+  boardCleanStaleConfigRpc,
   boardCreateCardRpc,
   boardCreateRpc,
   boardDeleteRpc,
@@ -22,6 +23,7 @@ import {
   boardRenameRpc,
   boardSetDefaultsRpc,
   boardSetLastVisitedRpc,
+  boardStaleConfigRpc,
   boardStartTeammateRpc,
   boardStateRpc,
   boardTeammateSessionsRpc,
@@ -164,6 +166,8 @@ export function BoardScreen({ theme, layout, navigation }: PluginScreenProps) {
   const createCard = useRpc(boardCreateCardRpc);
   const startTeammate = useRpc(boardStartTeammateRpc);
   const getTeammateSessions = useRpc(boardTeammateSessionsRpc);
+  const getStaleConfig = useRpc(boardStaleConfigRpc);
+  const cleanStaleConfig = useRpc(boardCleanStaleConfigRpc);
 
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<Overlay | null>(null);
@@ -193,6 +197,13 @@ export function BoardScreen({ theme, layout, navigation }: PluginScreenProps) {
     refetchInterval: 3000,
   });
 
+  const staleQuery = useQuery({
+    queryKey: ["aces-boards", "stale-config"],
+    queryFn: () => getStaleConfig({}),
+    staleTime: 60000,
+  });
+  const staleCount = staleQuery.data?.count ?? 0;
+
   const c = theme.colors;
   const compact = layout.compact;
   const styles = useMemo(
@@ -201,6 +212,10 @@ export function BoardScreen({ theme, layout, navigation }: PluginScreenProps) {
         root: { flex: 1, backgroundColor: c.surface0 },
         banner: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: c.border },
         bannerSide: { flex: 1, flexDirection: "row", alignItems: "center" },
+        staleBanner: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: c.statusWarning, backgroundColor: c.surface1 },
+        staleBannerText: { flex: 1, color: c.foreground, fontSize: 12 },
+        staleBannerButton: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: c.border },
+        staleBannerButtonText: { color: c.foreground, fontSize: 12, fontWeight: "600" },
         selector: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface1 },
         selectorText: { color: c.foreground, fontSize: 13, fontWeight: "600" },
         teammatesRow: { flexDirection: "row", alignItems: "center", gap: 2 },
@@ -237,6 +252,19 @@ export function BoardScreen({ theme, layout, navigation }: PluginScreenProps) {
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["aces-boards", "board"] });
+  }
+
+  async function handleCleanStale() {
+    try {
+      const { cleaned } = await cleanStaleConfig({});
+      queryClient.invalidateQueries({ queryKey: ["aces-boards", "stale-config"] });
+      toast.show(
+        `Removed stale aces MCP config from ${cleaned} record${cleaned === 1 ? "" : "s"}. Restart the daemon to apply.`,
+        { durationMs: 7000 },
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
   }
 
   function switchBoard(id: string) {
@@ -670,6 +698,16 @@ export function BoardScreen({ theme, layout, navigation }: PluginScreenProps) {
       style={styles.root}
       onLayout={(e) => setRootSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
     >
+      {staleCount > 0 ? (
+        <View style={styles.staleBanner}>
+          <Text style={styles.staleBannerText}>
+            {staleCount} record{staleCount === 1 ? "" : "s"} still reference the old aces MCP servers and may fail to reconnect.
+          </Text>
+          <Pressable accessibilityRole="button" onPress={() => void handleCleanStale()} style={styles.staleBannerButton}>
+            <Text style={styles.staleBannerButtonText}>Clean up</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <View style={styles.banner}>
         <Pressable accessibilityRole="button" accessibilityLabel="Switch board" onPress={(e) => openBoardSelector(e)} style={styles.selector}>
           <Text style={styles.selectorText}>Board: {board?.name ?? "…"}</Text>
