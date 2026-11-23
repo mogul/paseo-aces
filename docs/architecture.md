@@ -1,8 +1,9 @@
 # Architecture
 
 `aces-boards` is the boards plugin in the aces suite — an Agor-style, multi-board
-workspace board. Its sibling, `aces-teammates`, handles persistent teammates and
-memory. This is the canonical, current-state summary; decisions are recorded in
+workspace board. Its siblings: `aces-teammates` handles persistent teammates
+and memory; `aces-a2ui` renders agents' answers as interactive A2UI 1.0 cards.
+This is the canonical, current-state summary; decisions are recorded in
 `docs/decisions/`.
 
 ## Principles
@@ -107,3 +108,41 @@ Zone ⋯ menu → "Add card" → tabs "Create card" / "Find card".
 Scheduled/lifecycle prompts (Paseo `schedules`), canned prompts (Paseo skills),
 agent "fork" (not in the plugin SDK), card action icons for terminal/files/diff
 (not exposed by plugin navigation), and multiplayer presence (needs a relay).
+
+## aces-a2ui (interactive answers)
+
+`plugins/aces-a2ui` lets an agent answer with Google's A2UI 1.0 instead of text.
+
+- **Opt-in gate**: the `agent.open.before` hook appends the A2UI Express grammar
+  + basic-catalog instructions (`appendSystemPrompt`, ephemeral per open) and
+  the `a2ui_render` tool only when `labels["aces-a2ui"]` is truthy and the
+  session is interactive. Nothing is persisted anywhere; there is no MCP server.
+- **Server pipeline** (`server/`): the TS entries never import `@a2ui/*` — the
+  daemon evaluates the server bundle with its own `zod` (v4) while
+  `@a2ui/web_core` is built for zod 3, so any import crashes the plugin load.
+  `server/worker.ts` bridges to `server/a2ui-worker.mjs`, a plain Node CLI
+  (never bundled) spawned via `spawnProcess(process.execPath, …)` with
+  `ELECTRON_RUN_AS_NODE=1`, where Express compiles (`ExpressFormat`) and both
+  paths validate (`validatePayload`) against the A2UI 1.0 basic catalog;
+  `agent-tools.ts` appends the `a2ui-surface` timeline item with id
+  `a2ui:<agentId>:<surfaceId>` (same id = live replace) and records the pair
+  in `surfaces.ts`.
+- **Client renderer** (`client/a2ui/`): hand-rolled state + binding resolution —
+  the RN client never imports `@a2ui/*` at runtime (those packages ship DOM/Lit
+  code); type-only imports. Renders the v1 subset (Row/Column/List/Card/Text/
+  Divider/Image/Icon/Button/TextField/CheckBox/AudioPlayer via `playAudio`);
+  anything else renders a visible placeholder. Theme (`theme.colors`) and
+  `layout.compact` aware; recursion depth-capped. A per-card **live dataModel**
+  (a copy of the message-time model) resolves all bindings: bound TextField/
+  CheckBox edits write through into it (`onEdit` → `setDataPath`), so a press
+  dispatches the edited values in its action context; the model resets when the
+  card is replaced, so edits never survive a re-render (the ephemeral-surface
+  contract the agent instructions state).
+- **Action round-trip**: a button press goes through the `a2ui.action` RPC with a
+  client-generated `eventId` (one per press); the server checks the (agentId,
+  surfaceId) pair was rendered by this instance (in-memory map, capped at 64 per
+  agent), size-caps the serialized action at 16 KiB, then sends
+  `[a2ui action] {"surfaceId":…,"action":…,"eventId":…}` into the agent as a
+  user message. The eventId is forwarded, never stored; the agent re-renders
+  with the same surfaceId, and an identical `eventId` means a duplicate
+  delivery of one press, so it does not repeat non-idempotent side effects.

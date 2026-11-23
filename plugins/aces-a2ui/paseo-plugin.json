@@ -1,0 +1,7 @@
+{
+  "id": "aces-a2ui",
+  "name": "A2UI",
+  "description": "Answer with an interactive UI: agents render Google A2UI 1.0 surfaces (cards, forms, buttons) natively in the timeline.",
+  "media": [],
+  "requirements": { "paseo": ">=0.17.1" }
+}

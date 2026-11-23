@@ -6,11 +6,11 @@ MCP servers, tools, or persisted state.
 
 ## What this is
 
-`aces` is a suite of two Paseo plugins: `plugins/aces-boards` and
-`plugins/aces-teammates`. See `README.md` for the product and
-`docs/architecture.md` for the design. Plugin code is trusted, runs in a
-subprocess on the daemon machine, and has filesystem access plus a Paseo SDK
-(`PaseoApi`).
+`aces` is a suite of three Paseo plugins: `plugins/aces-boards`,
+`plugins/aces-teammates`, and `plugins/aces-a2ui`. See `README.md` for the
+product and `docs/architecture.md` for the design. Plugin code is trusted,
+runs in a subprocess on the daemon machine, and has filesystem access plus a
+Paseo SDK (`PaseoApi`).
 
 ## Rules that prevent data-corruption bugs
 

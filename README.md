@@ -1,7 +1,8 @@
 # aces — Agentic Coding Enabler Suite
 
-aces is a suite of two [Paseo](https://paseo.sh) plugins that bring Agor-style,
-board-based orchestration and persistent AI teammates to Paseo:
+aces is a suite of three [Paseo](https://paseo.sh) plugins that bring Agor-style,
+board-based orchestration, persistent AI teammates, and interactive A2UI
+answers to Paseo:
 
 - **`aces-boards`** — a board of **zones** where each **workspace** is a card showing its
   branch, pull request, issue pills, and a live session tree. Move a card into a
@@ -13,6 +14,10 @@ board-based orchestration and persistent AI teammates to Paseo:
   a persona gallery + emoji, and a memory MCP. Give a teammate a resident board
   and a heartbeat and it becomes a **supervisor** that periodically drives that
   board.
+- **`aces-a2ui`** — answers as interactive UI: agents compile Google's
+  A2UI 1.0 (Express DSL or raw JSON messages) into native timeline cards
+  (layout, text, buttons, form fields), with button presses round-tripping
+  back into the agent. Opt-in per agent via the `aces-a2ui` label.
 
 Everything builds on Paseo's native facilities (multi-agent harness,
 multi-provider, worktrees, schedules, and orchestration MCP tools) rather than
@@ -26,6 +31,7 @@ orchestrate.
 | --- | --- | --- |
 | Board | `aces-boards` | Zones + workspace cards (branch/PR/sessions), move-to-zone triggers, multiple boards + card defaults, board MCP |
 | Teammates | `aces-teammates` | Persistent identity + file memory, bench UI, personas + emoji, memory MCP, heartbeat supervisor |
+| A2UI | `aces-a2ui` | Answers as interactive UI: A2UI 1.0 surfaces rendered natively in the timeline, button actions round-trip into the agent |
 
 ## Install
 
@@ -34,6 +40,7 @@ From this repository (`github:mogul/paseo-aces`):
 ```
 paseo plugin install github:mogul/paseo-aces:plugins/aces-boards
 paseo plugin install github:mogul/paseo-aces:plugins/aces-teammates
+paseo plugin install github:mogul/paseo-aces:plugins/aces-a2ui
 ```
 
 Or from a local checkout:
@@ -41,13 +48,14 @@ Or from a local checkout:
 ```
 paseo plugin install /absolute/path/to/paseo-aces/plugins/aces-boards
 paseo plugin install /absolute/path/to/paseo-aces/plugins/aces-teammates
+paseo plugin install /absolute/path/to/paseo-aces/plugins/aces-a2ui
 ```
 
 ## Roadmap
 
 Shipped: board, multiple boards + card defaults, board MCP, teammates + memory,
 supervisor (board-resident agent), persona gallery + emoji, presence, template
-versioning, and state-as-git.
+versioning, state-as-git, and A2UI 1.0 timeline cards.
 
 Next: the **discussion plane** (a human/agent message layer above sessions, with
 drop-in/steer). See `docs/roadmap.md` for the full backlog (multiplayer
