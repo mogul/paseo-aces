@@ -3,6 +3,8 @@
  * (base64 + mimeType). The client context is captured once by index.client.tsx.
  */
 
+import { isValidMediaUrl } from "./media-url";
+
 export interface PlayAudioSource {
   base64: string;
   mimeType: string;
@@ -20,6 +22,8 @@ export function setPlayAudio(fn: PlayAudio): void {
 /** Loads the URL (data: URI directly, remote via fetch) and plays it through Paseo. */
 export async function playAudioFromUrl(url: string): Promise<void> {
   if (!playAudio) throw new Error("Audio playback is unavailable on this client.");
+  // Spec-mandated media URL allowlist (see media-url.ts) before any fetch.
+  if (!isValidMediaUrl(url)) throw new Error("Unsupported audio URL.");
   const source = await toPlayAudioSource(url);
   await playAudio(source);
 }

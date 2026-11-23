@@ -25,14 +25,18 @@ renders it as a native card in the agent's timeline.
 - The client renderer (`addTimelineRenderer`, kind `a2ui-surface` v1) applies
   the messages to a hand-rolled surface state — the client never imports
   `@a2ui/*` at runtime, because those packages ship DOM/Lit code — and renders
-  the v1 basic-catalog subset with native widgets: Row, Column, List, Card,
-  Text, Divider, Image, Icon, Button, TextField, CheckBox, and AudioPlayer
-  (through Paseo's `playAudio`). Components outside the subset (Modal, Tabs,
-  Video, ChoicePicker, Slider, DateTimeInput) render a visible placeholder
-  instead of crashing. Styling follows `theme.colors` and tightens under
+  the full v1 basic catalog with native widgets — all 18 components: Row,
+  Column, List, Card, Tabs, Text, Divider, Modal, Image, Video, Icon, Button,
+  TextField, CheckBox, ChoicePicker, Slider, DateTimeInput, and AudioPlayer
+  (through Paseo's `playAudio`; Video shows its poster and opens externally;
+  Slider is hand-rolled since plugins cannot ship native modules). The
+  `‹unsupported›` placeholder remains only for unknown component types.
+  Agent-supplied media URLs are validated against the spec allowlist
+  (`http:`/`https:`/`data:`/relative), and Text conservatively strips common
+  Markdown markers. Styling follows `theme.colors` and tightens under
   `layout.compact`. Bindings resolve against a per-card live dataModel, so
-  edits in a bound TextField or CheckBox reach the button's action context;
-  replacing the card resets the model.
+  edits in a bound widget reach the button's action context; replacing the
+  card resets the model.
 - A press of a Button lands back in the agent as a user message:
   `[a2ui action] {"eventId":"...","surfaceId":"...","action":{...}}` (each press
   carries a client-generated `eventId` so the agent can dedupe double-delivery).
@@ -52,8 +56,9 @@ with a card.
 
 Surfaces are ephemeral: they live in the daemon's in-memory timeline only, are
 never persisted to agent config or state, and disappear on plugin restart —
-recovery is asking the agent again. The rendered subset is the basic catalog
-minus Modal/Tabs/Video/pickers; `formatString`/`formatDate`/`pluralize` are
-best-effort; `openUrl` opens the platform browser. The Express grammar and
-catalog instructions are appended to the agent's system prompt on open
+recovery is asking the agent again. The rendered catalog is complete except
+for in-timeline video (Video and `openUrl` open the platform browser;
+DateTimeInput is free-text ISO entry rather than a native picker);
+`formatString`/`formatDate`/`pluralize` are best-effort. The Express grammar
+and catalog instructions are appended to the agent's system prompt on open
 (`appendSystemPrompt`), which is also ephemeral.

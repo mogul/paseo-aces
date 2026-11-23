@@ -130,9 +130,12 @@ agent "fork" (not in the plugin SDK), card action icons for terminal/files/diff
   counts + event names) in the tool result so the agent can self-check.
 - **Client renderer** (`client/a2ui/`): hand-rolled state + binding resolution —
   the RN client never imports `@a2ui/*` at runtime (those packages ship DOM/Lit
-  code); type-only imports. Renders the v1 subset (Row/Column/List/Card/Text/
-  Divider/Image/Icon/Button/TextField/CheckBox/AudioPlayer via `playAudio`);
-  anything else renders a visible placeholder. Theme (`theme.colors`) and
+  code); type-only imports. Renders the full v1 catalog — all 18 components
+  (Slider hand-rolled via PanResponder, Modal via the host dialog, Video as a
+  poster that opens externally; AudioPlayer via `playAudio`) — with media URLs
+  validated per the spec (`http:`/`https:`/`data:`/relative only) and a
+  conservative Text Markdown-marker fallback; only unknown types render the
+  placeholder. Theme (`theme.colors`) and
   `layout.compact` aware; recursion depth-capped. A per-card **live dataModel**
   (a copy of the message-time model) resolves all bindings: bound TextField/
   CheckBox edits write through into it (`onEdit` → `setDataPath`), so a press
