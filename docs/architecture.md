@@ -125,8 +125,9 @@ agent "fork" (not in the plugin SDK), card action icons for terminal/files/diff
   `ELECTRON_RUN_AS_NODE=1`, where Express compiles (`ExpressFormat`) and both
   paths validate (`validatePayload`) against the A2UI 1.0 basic catalog;
   `agent-tools.ts` appends the `a2ui-surface` timeline item with id
-  `a2ui:<agentId>:<surfaceId>` (same id = live replace) and records the pair
-  in `surfaces.ts`.
+  `a2ui:<agentId>:<surfaceId>` (same id = live replace), records the pair
+  in `surfaces.ts`, and echoes a compiled-surface summary (component/button
+  counts + event names) in the tool result so the agent can self-check.
 - **Client renderer** (`client/a2ui/`): hand-rolled state + binding resolution —
   the RN client never imports `@a2ui/*` at runtime (those packages ship DOM/Lit
   code); type-only imports. Renders the v1 subset (Row/Column/List/Card/Text/

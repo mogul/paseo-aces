@@ -4,6 +4,7 @@ import type { JsonValue } from "@getpaseo/protocol/agent-types";
 import { z } from "zod";
 import { catalogId } from "./catalog";
 import { compileExpress, validateMessages } from "./compile";
+import { summarizeMessages } from "./summary";
 import { recordSurface } from "./surfaces";
 import {
   A2UI_TIMELINE_KIND,
@@ -39,6 +40,7 @@ export function createA2uiTools(): AgentToolDefinition[] {
               ? await compileExpress(input.express, surfaceId)
               : input.messages ?? [];
           await validateMessages(messages);
+          const summary = summarizeMessages(messages);
           // Messages are validated JSON envelopes, so they are JSON-safe by the time they get here.
           const data: Record<string, JsonValue> = {
             surfaceId,
@@ -58,6 +60,7 @@ export function createA2uiTools(): AgentToolDefinition[] {
             text: JSON.stringify({
               ok: true,
               surfaceId,
+              ...summary,
               note: "rendered; call again with the same surfaceId to update it live",
             }),
           };

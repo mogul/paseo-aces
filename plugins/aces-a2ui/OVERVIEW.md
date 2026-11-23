@@ -19,7 +19,9 @@ renders it as a native card in the agent's timeline.
   `@a2ui/*` (built for zod 3 vs the daemon's zod 4) — then appends a plugin
   timeline item (`a2ui-surface`).
   A call with the same `surfaceId` replaces the previous card in place, so the
-  agent can stream live updates into one card.
+  agent can stream live updates into one card. The tool result echoes the
+  compiled summary (`components`/`buttons` counts, `events`/`functionCalls`) so
+  the agent can self-check what actually rendered.
 - The client renderer (`addTimelineRenderer`, kind `a2ui-surface` v1) applies
   the messages to a hand-rolled surface state — the client never imports
   `@a2ui/*` at runtime, because those packages ship DOM/Lit code — and renders

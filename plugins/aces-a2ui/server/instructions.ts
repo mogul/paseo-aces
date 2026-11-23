@@ -20,7 +20,10 @@ const PASEO_A2UI_CONTRACT = `# Answering with interactive UI (A2UI) on Paseo
   user's local edits (text fields, checkboxes) survived; re-render the full surface from
   your own state on every turn.
 - Put dynamic values in the surface \`dataModel\` and bind component properties to them
-  with JSON Pointer bindings like \`{"@path": "/user/name"}\`.`;
+  with JSON Pointer bindings like \`{"@path": "/user/name"}\`.
+- The tool result echoes a summary of what compiled: \`components\` count, \`buttons\` count,
+  and the \`events\`/\`functionCalls\` it found. Check it against what you intended (e.g. a
+  missing button shows as \`buttons: 0\`).`;
 
 let cached: Promise<string[]> | undefined;
 
