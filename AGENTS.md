@@ -81,7 +81,18 @@ disabled/reloaded/upgraded. Unrelated agents then failed to reopen with
 - Reload a plugin after changing code:
   `paseo plugin reload aces-boards` (CLI at
   `C:\Program Files\Paseo\resources\bin\paseo.cmd`).
-- Commit unsigned: `git commit --no-gpg-sign` (1Password signing is flaky in
-  this environment).
+- Sign commits with the **agent SSH key** (`~/.ssh/id_ed25519_agent_signing`),
+  never the 1Password key: global `user.signingkey`/`gpg.ssh.program` point at
+  the 1Password shim (`op-ssh-sign`), which intermittently fails with
+  `1Password: invalid ssh public key`. Set repo-local once per checkout
+  (global config stays untouched):
+  ```
+  git config user.signingkey ~/.ssh/id_ed25519_agent_signing
+  git config gpg.ssh.program "C:/Program Files/Git/usr/bin/ssh-keygen.exe"
+  git config gpg.ssh.allowedSignersFile ~/.ssh/allowed_signers
+  ```
+  then commit normally (`git commit`); verify with
+  `git log -1 --show-signature`. A checkout without these settings falls back
+  to global 1Password signing, so re-set them after a fresh clone.
 - Keep `README.md` and `docs/architecture.md` current when you change behavior —
   stale docs were a contributing factor in the MCP incident above.
